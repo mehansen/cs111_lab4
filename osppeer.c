@@ -651,7 +651,23 @@ static void task_upload(task_t *t)
 	}
 	t->head = t->tail = 0;
 
-	t->disk_fd = open(t->filename, O_RDONLY);
+	// check if t->filename[0] is a letter
+	// A = 65, Z = 90
+	// a = 97, z = 122
+	// / = 92, . = 46
+	// if . then we need to check [1] = /
+	char first = t->filename[0], second = t->filename[1];
+	if ((first >= 'A' && first <= 'Z')
+		|| (first >= 'a' && first <= 'z')) {
+
+		t->disk_fd = open(t->filename, O_RDONLY);
+
+	} else if (first == '.' && second == '/') {
+		t->disk_fd = open(t->filename, O_RDONLY);
+	} else {
+		error("* Cannot open file %s", t->filename);
+		goto exit;
+	}
 	if (t->disk_fd == -1) {
 		error("* Cannot open file %s", t->filename);
 		goto exit;
@@ -771,22 +787,37 @@ int main(int argc, char *argv[])
 			forkPid = fork();
 			if (forkPid >= 0) {	// fork success
 				if (forkPid == 0) { // child
-					argc--;
-					argv++;
-				} else { // parent
 					task_download(t, tracker_task);
 					_exit(0);
+				} else { // parent
+					argc--;
+					argv++;
 				}
 			} else {	// fork failed
 				die("fork broke :(\n");
 				return 1;
 			}
+		} else {
+			argc--;
+			argv++;
 		}
 	}
 
 	// Then accept connections from other peers and upload files to them!
-	while ((t = task_listen(listen_task)))
-		task_upload(t);
+	while ((t = task_listen(listen_task))) {
+		forkPid = fork();
+		if (forkPid >= 0) {
+			if (forkPid == 0) {
+				task_upload(t);
+				_exit(0);
+			} else {
+				continue;
+			}
+		}  else {
+			die("fork broke :(\n");
+			return 1;
+		}
+	}
 
 	return 0;
 }
