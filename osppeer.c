@@ -767,26 +767,22 @@ int main(int argc, char *argv[])
 
 	pid_t forkPid = -1;
 	while (argc > 1) {
-		forkPid = fork();
-		if (forkPid >= 0) {	// fork success
-			printf("forked with argc = %d!\n", argc);
-			if (forkPid == 0) { // child
-				printf("inside child handler\n");
-				argc--;
-				argv++;
-			} else { // parent
-				printf("inside parent handler\n");
-				sleep(1);
-				if ((t = start_download(tracker_task, argv[1])))
+		if ((t = start_download(tracker_task, argv[1]))) {
+			forkPid = fork();
+			if (forkPid >= 0) {	// fork success
+				if (forkPid == 0) { // child
+					argc--;
+					argv++;
+				} else { // parent
 					task_download(t, tracker_task);
-				break;
+					_exit(0);
+				}
+			} else {	// fork failed
+				die("fork broke :(\n");
+				return 1;
 			}
-		} else {	// fork failed
-			return 1;
 		}
 	}
-	printf("out of while loop, waiting\n");
-	wait(NULL);
 
 	// Then accept connections from other peers and upload files to them!
 	while ((t = task_listen(listen_task)))
