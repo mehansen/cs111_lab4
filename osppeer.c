@@ -772,13 +772,13 @@ int main(int argc, char *argv[])
 			printf("forked with argc = %d!\n", argc);
 			if (forkPid == 0) { // child
 				printf("inside child handler\n");
+				argc--;
+				argv++;
+			} else { // parent
+				printf("inside parent handler\n");
 				if ((t = start_download(tracker_task, argv[1])))
 					task_download(t, tracker_task);
 				break;
-			} else { // parent
-				printf("inside parent handler\n");
-				argc--;
-				argv++;
 			}
 		} else {	// fork failed
 			return 1;
