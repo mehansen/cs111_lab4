@@ -23,6 +23,8 @@
 #include "md5.h"
 #include "osp2p.h"
 
+#include <sys/wait.h>
+
 int evil_mode;			// nonzero iff this peer should behave badly
 
 static struct in_addr listen_addr;	// Define listening endpoint
@@ -759,9 +761,30 @@ int main(int argc, char *argv[])
 	register_files(tracker_task, myalias);
 
 	// First, download files named on command line.
-	for (; argc > 1; argc--, argv++)
+	/*for (; argc > 1; argc--, argv++)
 		if ((t = start_download(tracker_task, argv[1])))
-			task_download(t, tracker_task);
+			task_download(t, tracker_task);*/
+
+		pid_t forkPid = -1;
+	while ((forkPid = fork()) && (argc > 1)) {
+		if (forkPid >= 0) {	// fork success
+			printf("forked with argc = %d!\n", argc);
+			if (forkPid == 0) { // child
+				printf("inside child handler\n");
+				argc--;
+				argv++;
+			} else { // parent
+				printf("inside parent handler\n");
+				if ((t = start_download(tracker_task, argv[1])))
+					task_download(t, tracker_task);
+				break;
+			}
+		} else {	// fork failed
+			return 1;
+		}
+	}
+	printf("out of while loop, waiting");
+	wait(NULL);
 
 	// Then accept connections from other peers and upload files to them!
 	while ((t = task_listen(listen_task)))
