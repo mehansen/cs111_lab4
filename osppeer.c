@@ -776,6 +776,7 @@ int main(int argc, char *argv[])
 				argv++;
 			} else { // parent
 				printf("inside parent handler\n");
+				sleep(1);
 				if ((t = start_download(tracker_task, argv[1])))
 					task_download(t, tracker_task);
 				break;
@@ -784,7 +785,7 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 	}
-	printf("out of while loop, waiting");
+	printf("out of while loop, waiting\n");
 	wait(NULL);
 
 	// Then accept connections from other peers and upload files to them!
