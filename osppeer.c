@@ -534,8 +534,11 @@ static void task_download(task_t *t, task_t *tracker_task)
 	// "foo.txt~1~".  However, if there are 50 local files, don't download
 	// at all.
 	for (i = 0; i < 50; i++) {
-		if (i == 0)
+		if (i == 0) {
+			if (strnlen(t->filename, FILENAMESIZ+2) > FILENAMESIZ)
+				error("* Filename too large");
 			strcpy(t->disk_filename, t->filename);
+		}
 		else
 			sprintf(t->disk_filename, "%s~%d~", t->filename, i);
 		t->disk_fd = open(t->disk_filename,
