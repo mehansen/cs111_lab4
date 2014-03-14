@@ -289,10 +289,14 @@ static size_t read_tracker_response(task_t *t)
 	char *s;
 	size_t split_pos = (size_t) -1, pos = 0;
 	t->head = t->tail = 0;
+	int ret, newline_counter = 0;
 
 	while (1) {
 		// Check for whether buffer is complete.
-		for (; pos+3 < t->tail; pos++)
+		for (; pos+3 < t->tail; pos++) {
+			if (t->buf[pos] == '\n') {
+				newline_counter++;
+			}
 			if ((pos == 0 || t->buf[pos-1] == '\n')
 			    && isdigit((unsigned char) t->buf[pos])
 			    && isdigit((unsigned char) t->buf[pos+1])
@@ -307,14 +311,18 @@ static size_t read_tracker_response(task_t *t)
 					return split_pos;
 				}
 			}
-
+		}
 		// If not, read more data.  Note that the read will not block
 		// unless NO data is available.
-		int ret = read_to_taskbuf(t->peer_fd, t);
+		ret = read_to_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR)
 			die("tracker read error");
-		else if (ret == TBUF_END)
+		else if (ret == TBUF_END) {
+			if (newline_counter > 0) {
+				die("Error: the number of peers provided is TOO DAMN HIGH.  Please set a higher TASKBUFSIZ for this tracker\n");
+			}
 			die("tracker connection closed prematurely!\n");
+		}
 	}
 }
 
